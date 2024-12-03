@@ -13,7 +13,7 @@ class Exercise {
 }
 
 class TrackedExercise extends Exercise {
-  bool isFinished = false;
+  bool isFinished = true;
 
   TrackedExercise({
     required super.name,

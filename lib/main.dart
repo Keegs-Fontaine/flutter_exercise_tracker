@@ -6,10 +6,40 @@ import 'package:tracker_testing_app/util/exercise.dart';
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (context) => WeightTrackerNotifier(),
+      create: (context) => WeightsModel(),
       child: const MyApp(),
     ),
   );
+}
+
+class WeightsModel extends ChangeNotifier {
+  final _exercises = ExerciseList();
+
+  WeightsModel() {
+    _exercises.addNewExercise(
+      TrackedExercise(
+        name: "Bench",
+        weight: 185,
+        exerciseType: ExerciseType.push,
+      ),
+    );
+  }
+
+  get exercises => _exercises;
+
+  void append(TrackedExercise exercise) {
+    _exercises.addNewExercise(exercise);
+
+    notifyListeners();
+  }
+
+  void clearFinishedExercises() {
+    _exercises.removeFinishedExercises();
+
+    print(_exercises);
+
+    notifyListeners();
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -43,22 +73,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class WeightTrackerNotifier extends ChangeNotifier {
-  final _exercises = ExerciseList();
-
-  void append(TrackedExercise exercise) {
-    _exercises.addNewExercise(exercise);
-
-    notifyListeners();
-  }
-
-  void clearFinishedExercises() {
-    _exercises.removeFinishedExercises();
-
-    notifyListeners();
-  }
-}
-
 class Home extends StatefulWidget {
   const Home({
     super.key,
@@ -69,6 +83,8 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  final _exerciseState = WeightsModel();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -76,7 +92,7 @@ class _HomeState extends State<Home> {
         const ExerciseSelector(),
         const WeightsList(),
         ElevatedButton(
-          onPressed: () {},
+          onPressed: () => _exerciseState.clearFinishedExercises(),
           child: const Text("Clear Finished Exercises"),
         )
       ],
@@ -92,15 +108,9 @@ class WeightsList extends StatefulWidget {
 }
 
 class _WeightsListState extends State<WeightsList> {
-  void set() {
-    widget.exerciseList.addNewExercise(
-      TrackedExercise(
-        name: "Bench Press",
-        weight: 185,
-        exerciseType: ExerciseType.push,
-      ),
-    );
-  }
+  final _exerciseState = WeightsModel();
+
+  void set() {}
 
   @override
   void initState() {
@@ -110,19 +120,19 @@ class _WeightsListState extends State<WeightsList> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (TrackedExercise exercise in widget.exerciseList)
-          CheckboxListTile(
-            title: Text(exercise.name),
-            value: exercise.isFinished,
-            onChanged: (bool? value) {
-              setState(() {
-                exercise.isFinished = value ?? true;
-              });
-            },
-          ),
-      ],
+    return ListenableBuilder(
+      listenable: _exerciseState,
+      builder: (BuildContext context, Widget? child) {
+        final exercises = _exerciseState.exercises;
+        print("FROM BUILDER");
+        print(exercises);
+
+        return Column(
+          children: [
+            for (TrackedExercise exercise in exercises) Text(exercise.name)
+          ],
+        );
+      },
     );
   }
 }
@@ -135,22 +145,12 @@ class ExerciseSelector extends StatefulWidget {
 }
 
 class _ExerciseSelectorState extends State<ExerciseSelector> {
+  final _exerciseState = WeightsModel();
   final _cont = TextEditingController();
 
-  final WeightTrackerNotifier COU = WeightTrackerNotifier();
-
-  void _addNewListItem() {
-    final newExerciseName = _cont.text;
-
-    setState(() {
-      widget.exerciseList.addNewExercise(
-        TrackedExercise(
-          name: newExerciseName,
-          weight: 100,
-          exerciseType: ExerciseType.pull,
-        ),
-      );
-    });
+  void _addNewListItem(TrackedExercise exercise) {
+    _exerciseState.append(exercise);
+    print("fuck");
   }
 
   @override
@@ -160,14 +160,6 @@ class _ExerciseSelectorState extends State<ExerciseSelector> {
         TextFormField(
           controller: _cont,
         ),
-        Consumer<WeightTrackerNotifier>(
-          builder: (context, value, child) => ElevatedButton(
-            onPressed: value.add,
-            child: Text(
-              value._count.toString(),
-            ),
-          ),
-        )
       ],
     );
   }
